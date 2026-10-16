@@ -168,3 +168,20 @@ def test_recruiter_search(client, db_session):
     assert skills_res.status_code == 200
     skill_names = [s["name"] for s in skills_res.json()["skills"]]
     assert "Docker" in skill_names
+
+
+def test_url_and_username_parsing():
+    from app.routers.github_import import parse_github_repo_url, parse_github_username
+
+    # Test repo URL parsing
+    assert parse_github_repo_url("https://github.com/Priyadharshan-7/skillproof.git") == ("Priyadharshan-7", "skillproof")
+    assert parse_github_repo_url("https://github.com/Priyadharshan-7/skillproof/") == ("Priyadharshan-7", "skillproof")
+    assert parse_github_repo_url("github.com/Priyadharshan-7/skillproof") == ("Priyadharshan-7", "skillproof")
+    assert parse_github_repo_url("Priyadharshan-7/skillproof") == ("Priyadharshan-7", "skillproof")
+    assert parse_github_repo_url("invalid-url") is None
+
+    # Test username parsing
+    assert parse_github_username("Priyadharshan-7") == "Priyadharshan-7"
+    assert parse_github_username("@Priyadharshan-7") == "Priyadharshan-7"
+    assert parse_github_username("https://github.com/Priyadharshan-7") == "Priyadharshan-7"
+    assert parse_github_username("https://github.com/Priyadharshan-7/skillproof") == "Priyadharshan-7"
