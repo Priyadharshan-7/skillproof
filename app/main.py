@@ -24,8 +24,23 @@ from app.services.websocket_manager import manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan event handler initializing DB and resources on startup."""
-    from app.database import init_db
+    from app.database import init_db, SessionLocal
+    from app.models import Student
     init_db()
+    
+    # Auto-seed if database is fresh (great for container & cloud deployments)
+    db = SessionLocal()
+    try:
+        if db.query(Student).count() == 0:
+            logger.info("Fresh database detected. Seeding initial demo portfolios...")
+            from app.seed import seed_database
+            seed_database()
+            logger.info("✅ Database seeded successfully.")
+    except Exception as e:
+        logger.warning(f"Startup seed check: {e}")
+    finally:
+        db.close()
+
     logger.info("✅ SkillProof database initialized")
     logger.info("📊 API docs at http://localhost:8000/docs")
     logger.info("⚡ Real-time WebSocket engine ready at /ws")

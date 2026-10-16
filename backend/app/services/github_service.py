@@ -104,19 +104,30 @@ async def fetch_user_repos(username: str) -> Optional[list[dict]]:
     return repos
 
 
+def _clean_repo_name(repo: str) -> str:
+    """Sanitize repository name, stripping .git suffix and slashes."""
+    r = (repo or "").strip().rstrip("/")
+    if r.endswith(".git"):
+        r = r[:-4]
+    return r
+
+
 async def fetch_repo_details(owner: str, repo: str) -> Optional[dict]:
     """Fetch detailed info for a single repository."""
+    repo = _clean_repo_name(repo)
     return await _get(f"{GITHUB_API}/repos/{owner}/{repo}")
 
 
 async def fetch_repo_languages(owner: str, repo: str) -> dict:
     """Fetch language breakdown for a repo."""
+    repo = _clean_repo_name(repo)
     data = await _get(f"{GITHUB_API}/repos/{owner}/{repo}/languages")
     return data if isinstance(data, dict) else {}
 
 
 async def fetch_repo_commits(owner: str, repo: str, max_pages: int = 5) -> list[dict]:
     """Fetch recent commits for a repo (up to max_pages * 100)."""
+    repo = _clean_repo_name(repo)
     commits = []
     for page in range(1, max_pages + 1):
         data = await _get(
@@ -134,6 +145,7 @@ async def fetch_repo_commits(owner: str, repo: str, max_pages: int = 5) -> list[
 async def fetch_readme(owner: str, repo: str) -> str:
     """Fetch the README content (decoded)."""
     import base64
+    repo = _clean_repo_name(repo)
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         try:
             resp = await client.get(
@@ -154,6 +166,7 @@ async def fetch_readme(owner: str, repo: str) -> str:
 
 async def fetch_repo_contents(owner: str, repo: str, path: str = "") -> list[dict]:
     """Fetch repo file tree (top-level) to estimate file count."""
+    repo = _clean_repo_name(repo)
     data = await _get(f"{GITHUB_API}/repos/{owner}/{repo}/contents/{path}")
     return data if isinstance(data, list) else []
 

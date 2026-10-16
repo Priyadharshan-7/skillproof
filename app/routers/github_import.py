@@ -18,6 +18,47 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/import", tags=["github-import"])
 
 
+def parse_github_repo_url(url: str) -> tuple[str, str] | None:
+    """Robustly parse GitHub repo URL in various formats, stripping .git and slashes."""
+    if not url:
+        return None
+    cleaned = url.strip()
+    if cleaned.endswith(".git"):
+        cleaned = cleaned[:-4]
+    cleaned = cleaned.rstrip("/")
+    
+    # Matches https://github.com/owner/repo or github.com/owner/repo
+    match = re.search(r'(?:https?://)?(?:www\.)?github\.com/([^/\s]+)/([^/\s]+)', cleaned, re.IGNORECASE)
+    if match:
+        owner, repo = match.group(1), match.group(2)
+        if repo.endswith(".git"):
+            repo = repo[:-4]
+        return owner, repo
+        
+    # Matches owner/repo
+    match_short = re.match(r'^([^/\s]+)/([^/\s]+)$', cleaned)
+    if match_short:
+        owner, repo = match_short.group(1), match_short.group(2)
+        if repo.endswith(".git"):
+            repo = repo[:-4]
+        return owner, repo
+        
+    return None
+
+
+def parse_github_username(raw: str) -> str:
+    """Extract username even if a full profile URL was entered."""
+    if not raw:
+        return ""
+    cleaned = raw.strip().lstrip("@").rstrip("/")
+    match = re.search(r'(?:https?://)?(?:www\.)?github\.com/([^/\s]+)', cleaned, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    if "/" in cleaned:
+        return cleaned.split("/")[0]
+    return cleaned
+
+
 @router.get("/github/rate-limit")
 async def get_github_rate_limit():
     """Get real-time GitHub API rate limit status."""
@@ -30,15 +71,14 @@ async def live_scan_repo(data: GitHubRepoImportRequest):
     
     Provides instant analysis without requiring student profile association.
     """
-    url = data.repo_url.strip().rstrip("/")
-    match = re.match(r'https?://github\.com/([^/]+)/([^/]+)', url)
-    if not match:
+    parsed = parse_github_repo_url(data.repo_url)
+    if not parsed:
         raise HTTPException(
             status_code=400,
             detail="Invalid GitHub repo URL. Expected format: https://github.com/owner/repo",
         )
 
-    owner, repo_name = match.group(1), match.group(2)
+    owner, repo_name = parsed
     repo_data = await import_full_repo(owner, repo_name)
     if not repo_data:
         raise HTTPException(
@@ -81,7 +121,7 @@ async def stream_github_import(
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    uname = username.strip()
+    uname = parse_github_username(username)
     if not re.match(r'^[a-zA-Z0-9\-]+$', uname):
         raise HTTPException(status_code=400, detail="Invalid GitHub username format")
 
@@ -229,7 +269,7 @@ async def import_github_repos(student_id: int, data: GitHubImportRequest, db: Se
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    username = data.github_username.strip()
+    username = parse_github_username(data.github_username)
     if not re.match(r'^[a-zA-Z0-9\-]+$', username):
         raise HTTPException(status_code=400, detail="Invalid GitHub username format")
 
@@ -359,12 +399,11 @@ async def import_single_repo(student_id: int, data: GitHubRepoImportRequest, db:
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    url = data.repo_url.strip().rstrip("/")
-    match = re.match(r'https?://github\.com/([^/]+)/([^/]+)', url)
-    if not match:
+    parsed = parse_github_repo_url(data.repo_url)
+    if not parsed:
         raise HTTPException(status_code=400, detail="Invalid GitHub repo URL. Expected: https://github.com/owner/repo")
 
-    owner, repo_name = match.group(1), match.group(2)
+    owner, repo_name = parsed
 
     existing = db.query(Project).filter(
         Project.student_id == student_id,
