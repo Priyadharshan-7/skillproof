@@ -1846,3 +1846,15 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+// Keyboard accessibility: Escape key closes modals and live activity feed
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    closeLiveScanModal();
+    hideImportModal();
+    const drawer = document.getElementById("activity-drawer");
+    if (drawer && drawer.classList.contains("open")) {
+      toggleActivityDrawer();
+    }
+  }
+});

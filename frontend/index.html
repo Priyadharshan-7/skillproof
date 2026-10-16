@@ -339,11 +339,11 @@
     </main>
 
     <!-- ═══════════════════════ Real-Time Repo Scanner Modal ═══════════════════════ -->
-    <div class="modal-overlay" id="live-scan-modal" style="display:none;">
+    <div class="modal-overlay" id="live-scan-modal" style="display:none;" onclick="if(event.target === this) closeLiveScanModal()">
         <div class="modal modal-lg">
             <div class="modal-header">
                 <h2><i data-lucide="zap" style="color:var(--accent-amber);"></i> Real-Time Repository Scanner</h2>
-                <button class="btn btn-ghost" onclick="closeLiveScanModal()" aria-label="Close">✕</button>
+                <button class="modal-close-btn" onclick="closeLiveScanModal()" aria-label="Close modal" title="Close (Esc)">✕</button>
             </div>
             <div class="modal-body">
                 <p class="modal-intro">
@@ -366,15 +366,19 @@
                 </div>
                 <div id="live-scan-results" class="scan-results-container" style="display:none;"></div>
             </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.8rem; color: var(--text-dim);"><kbd style="background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; font-family: inherit;">Esc</kbd> or click backdrop to close</span>
+                <button class="btn btn-outline" onclick="closeLiveScanModal()">Close Scanner</button>
+            </div>
         </div>
     </div>
 
     <!-- ═══════════════════════ Import Modal ═══════════════════════ -->
-    <div class="modal-overlay" id="import-modal" style="display:none;">
+    <div class="modal-overlay" id="import-modal" style="display:none;" onclick="if(event.target === this) hideImportModal()">
         <div class="modal modal-lg">
             <div class="modal-header">
                 <h2><i data-lucide="github"></i> Real-Time GitHub Importer</h2>
-                <button class="btn btn-ghost" onclick="hideImportModal()" aria-label="Close">✕</button>
+                <button class="modal-close-btn" onclick="hideImportModal()" aria-label="Close modal" title="Close (Esc)">✕</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
