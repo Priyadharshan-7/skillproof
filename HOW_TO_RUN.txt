@@ -1,0 +1,209 @@
+uu================================================================================
+          SKILLPROOF: PROJECT-BASED CAREER EVIDENCE PLATFORM
+                         EXECUTION & SETUP GUIDE
+================================================================================
+
+Overview:
+SkillProof is a full-stack platform that transforms public GitHub projects
+into evidence-based developer profiles. It evaluates commit consistency,
+code complexity, documentation quality, and community signal while filtering
+out low-effort gaming (burst commits, bare forks).
+
+--------------------------------------------------------------------------------
+1. SYSTEM PREREQUISITES
+--------------------------------------------------------------------------------
+- Operating System: Windows, macOS, or Linux
+- Python: Version 3.10, 3.11, or newer
+- Modern Web Browser: Chrome, Firefox, Edge, or Safari
+- Internet Connection: Required only for initial setup or live GitHub API import
+
+--------------------------------------------------------------------------------
+2. PROJECT DIRECTORY STRUCTURE
+--------------------------------------------------------------------------------
+skillproof/
+├── .env                     # Local environment settings (ports, API keys)
+├── .env.example             # Example environment template
+├── skillproof.db            # SQLite database file (auto-created on seed)
+├── HOW_TO_RUN.txt           # This execution manual
+├── backend/
+│   ├── requirements.txt     # Python package dependencies
+│   ├── app/
+│   │   ├── main.py          # FastAPI application & static mount
+│   │   ├── database.py      # SQLAlchemy engine & session maker
+│   │   ├── models.py        # Database ORM models (Student, Project, Skill, Feedback)
+│   │   ├── schemas.py       # Pydantic validation schemas
+│   │   ├── seed.py          # Demo database seeder (5 realistic student profiles)
+│   │   ├── routers/         # API Route definitions
+│   │   │   ├── students.py  # Student profiles & visibility controls
+│   │   │   ├── recruiters.py# Candidate skill search & filtering
+│   │   │   ├── mentors.py   # Mentor feedback & skill verification
+│   │   │   └── github_import.py # GitHub repository analysis & import
+│   │   └── services/        # Business logic services
+│   │       ├── scoring.py   # Deterministic Evidence Scoring Engine
+│   │       ├── ai_summary.py# NLP/LLM summary & skill mapping engine
+│   │       └── github_service.py # GitHub REST API client
+│   └── tests/               # Automated Pytest test suite
+│       ├── conftest.py      # Test database fixtures
+│       ├── test_scoring.py  # Scoring engine unit tests
+│       └── test_api.py      # API endpoint integration tests
+└── frontend/
+    ├── index.html           # Single Page Application HTML5 structure
+    ├── styles.css           # Premium Dark Mode Design System
+    ├── app.js               # Client controller, Chart.js graphs, routing
+    ├── chart.min.js         # Local Chart.js library (offline)
+    └── lucide.min.js        # Local Lucide Icons library (offline)
+
+--------------------------------------------------------------------------------
+3. STEP-BY-STEP SETUP INSTRUCTIONS
+--------------------------------------------------------------------------------
+
+STEP 3.1: Open PowerShell or Terminal
+Navigate into the project root directory:
+    cd "c:\Users\priya\.gemini\antigravity-ide\scratch\skillproof"
+
+STEP 3.2: Verify or Create Virtual Environment
+If `backend/venv` does not already exist:
+    python -m venv backend/venv
+
+STEP 3.3: Activate the Virtual Environment
+- On Windows (PowerShell):
+    .\backend\venv\Scripts\Activate.ps1
+  (If execution policy blocks activation: Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass)
+
+- On Windows (Command Prompt):
+    .\backend\venv\Scripts\activate.bat
+
+- On macOS / Linux:
+    source backend/venv/bin/activate
+
+STEP 3.4: Install Required Python Packages
+Run:
+    pip install -r backend/requirements.txt
+
+STEP 3.5: Configure Environment Variables
+Copy `.env.example` to `.env` (already created by default):
+    copy .env.example .env   (Windows)
+    cp .env.example .env     (Linux/macOS)
+
+Default `.env` contents:
+    DATABASE_URL=sqlite:///./skillproof.db
+    HOST=127.0.0.1
+    PORT=8000
+    GITHUB_TOKEN=          # Optional: Personal GitHub token for 5000 req/hr
+    OPENAI_API_KEY=        # Optional: For OpenAI summaries; mock NLP runs if blank
+
+--------------------------------------------------------------------------------
+4. SEEDING THE DATABASE WITH DEMO DATA
+--------------------------------------------------------------------------------
+To populate 5 realistic student portfolios (Aria Chen, Marcus Johnson,
+Priya Sharma, Jordan Lee, Sofia Rodriguez) with projects, commit timelines,
+skills, and verified mentor reviews:
+
+- On Windows (PowerShell):
+    $env:PYTHONPATH="backend"; .\backend\venv\Scripts\python.exe -m app.seed
+
+- On Linux / macOS / Bash:
+    PYTHONPATH=backend ./backend/venv/bin/python -m app.seed
+
+Expected output:
+    [!] Database already has data. Clearing and re-seeding...
+      [+] Aria Chen - score: 61.5/100, 3 projects, 17 skills
+      [+] Marcus Johnson - score: 90.8/100, 2 projects, 13 skills
+      [+] Priya Sharma - score: 82.8/100, 2 projects, 11 skills
+      [+] Jordan Lee - score: 35.2/100, 2 projects, 7 skills
+      [+] Sofia Rodriguez - score: 83.7/100, 2 projects, 10 skills
+    [*] Adding mentor feedback...
+    [SUCCESS] Seeded 5 students with projects, skills, and feedback!
+
+--------------------------------------------------------------------------------
+5. RUNNING THE AUTOMATED TEST SUITE
+--------------------------------------------------------------------------------
+To run the automated unit and integration tests (13 test cases):
+
+- On Windows (PowerShell):
+    .\backend\venv\Scripts\pytest.exe backend\tests -v
+
+- On Linux / macOS / Bash:
+    ./backend/venv/bin/pytest backend/tests -v
+
+All 13 tests should pass within ~0.3 seconds.
+
+--------------------------------------------------------------------------------
+6. LAUNCHING THE SKILLPROOF APPLICATION
+--------------------------------------------------------------------------------
+To start the Fatsia web and API server:
+
+- On Windows (PowerShell):
+    $env:PYTHONPATH="backend"; .\backend\venv\Scripts\uvicorn.exe app.main:app --host 127.0.0.1 --port 8000 --reload
+
+- On Linux / macOS / Bash:
+    PYTHONPATH=backend ./backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+
+Once running, access the application in your browser:
+- User Interface:  http://127.0.0.1:8000/
+- Interactive API Docs (Swagger):  http://127.0.0.1:8000/docs
+- Alternative API Docs (ReDoc):   http://127.0.0.1:8000/redoc
+- Health Check:    http://127.0.0.1:8000/api/health
+
+--------------------------------------------------------------------------------
+7. APPLICATION FEATURES & REAL-TIME WORKFLOWS
+--------------------------------------------------------------------------------
+1. Real-Time WebSocket Synchronization Engine (/ws):
+   - Automatic bi-directional synchronization between server and all connected clients.
+   - Pulsing "● Live Sync" status indicator in the top navbar.
+   - Live Activity Feed Drawer: Displays instant notifications as mentors review
+     projects, skills get verified, and new repositories are imported.
+   - Instant live updates across views without full page refreshes.
+   - "Simulate" button to test real-time WebSocket events on demand.
+
+2. Real-Time Streaming GitHub Importer:
+   - Live Server-Sent Events (SSE) progress streaming: Displays percentage bar
+     (0% -> 100%) and terminal log as each repository is fetched, scored, and
+     skills are extracted.
+   - Anti-gaming authenticity checks run live during repository ingestion.
+   - Live GitHub API rate-limit monitor (GH Quota: 60/60) in the navbar and modal.
+
+3. Real-Time Repository Scanner:
+   - Instantly audit ANY public GitHub repository (e.g. fastapi/fastapi).
+   - Generates an immediate 0-100 Evidence Score breakdown, language distribution,
+     AI-suggested skills, and authenticity signals without requiring an account.
+
+4. Instant Real-Time Search & Filtering:
+   - Instant search bar in Student Profiles: Filter candidates in real-time by
+     name, GitHub username, or technical skill with zero latency.
+   - Recruiter Search: Real-time Evidence Score slider (0 to 100) and skill filter
+     with instant candidate match count and direct profile inspection.
+
+5. Student Profiles & Detailed Proof:
+   - 5-Dimensional Evidence Score breakdown: Commit Consistency, Project Complexity,
+     Documentation Quality, Recent Activity, and Community Signal.
+   - Anti-Gaming & Authenticity Audit flags (detects burst commits, bare forks).
+   - Interactive Commit Timeline Chart (Chart.js monthly activity).
+   - Project visibility toggle (Public/Private privacy control).
+   - Verified Skill Badges (green shield) vs. AI-suggested Skills (purple sparkle).
+
+6. Mentor Verification Portal:
+   - 1-5 Star rating system with strengths, improvements, and comments.
+   - Human approval checkboxes that convert AI-suggested skills into permanent
+     verified credentials, broadcasting updates in real time to recruiters.
+
+--------------------------------------------------------------------------------
+8. TROUBLESHOOTING & FAQ
+--------------------------------------------------------------------------------
+Q: Port 8000 is already in use.
+A: Start uvicorn on another port:
+   uvicorn app.main:app --host 127.0.0.1 --port 8080
+   Then access http://127.0.0.1:8080/
+
+Q: ModuleNotFoundError: No module named 'app'
+A: Ensure PYTHONPATH includes the `backend` folder:
+   $env:PYTHONPATH="backend" (PowerShell) or export PYTHONPATH=backend (Bash)
+
+Q: "lucide is not defined" or blank icons in browser.
+A: Hard refresh your browser using Ctrl + F5 or Cmd + Shift + R.
+   The project bundles `frontend/lucide.min.js` and `frontend/chart.min.js`
+   locally so it works 100% offline without external CDN dependencies.
+
+================================================================================
+                      End of Execution & Setup Guide
+================================================================================
