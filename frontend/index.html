@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillProof — Project-Based Career Evidence</title>
+    <meta name="description" content="Show what you can actually do. Import projects, build evidence scores, and let recruiters see the proof behind your skills with real-time sync.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js (local with fallback) -->
+    <script src="/static/chart.min.js"></script>
+    
+    <!-- Lucide Icons (local with fallback) -->
+    <script src="/static/lucide.min.js"></script>
+    <script>
+        if (typeof lucide === "undefined") {
+            document.write('<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"><\/script>');
+        }
+    </script>
+    
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <!-- ═══════════════════════ Navigation ═══════════════════════ -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo" onclick="showView('landing')">
+                <span class="logo-icon">◆</span>
+                <span class="logo-text">SkillProof</span>
+            </a>
+            
+            <div class="nav-links">
+                <a href="#" class="nav-link" onclick="showView('students')" id="nav-students">
+                    <i data-lucide="users"></i> Students
+                </a>
+                <a href="#" class="nav-link" onclick="showView('recruiter')" id="nav-recruiter">
+                    <i data-lucide="search"></i> Recruiter
+                </a>
+                <a href="#" class="nav-link" onclick="showView('mentor')" id="nav-mentor">
+                    <i data-lucide="message-square"></i> Mentor
+                </a>
+            </div>
+
+            <!-- Real-time Status & Feed Trigger -->
+            <div class="nav-realtime-group">
+                <div class="live-status-pill" id="live-status-pill" onclick="reconnectWebSocket()" title="Real-time WebSocket Sync Engine active (click to test/reconnect)">
+                    <span class="live-dot"></span>
+                    <span id="live-status-text">Live Sync</span>
+                </div>
+                
+                <div class="rate-limit-pill" id="rate-limit-pill" title="GitHub API Rate Limit Status">
+                    <i data-lucide="gauge" style="width:14px; height:14px;"></i>
+                    <span id="rate-limit-text">GH Quota: ...</span>
+                </div>
+
+                <button class="activity-toggle-btn" onclick="toggleActivityDrawer()" title="View Real-Time Live Activity Stream">
+                    <i data-lucide="activity" style="width:14px; height:14px;"></i>
+                    <span class="activity-label">Live Feed</span>
+                    <span class="activity-badge" id="activity-count">0</span>
+                </button>
+
+                <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Toggle menu">
+                    <i data-lucide="menu"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ═══════════════════════ Real-Time Activity Drawer ═══════════════════════ -->
+    <aside class="activity-drawer" id="activity-drawer">
+        <div class="activity-drawer-header">
+            <div class="activity-drawer-title">
+                <span class="live-dot"></span>
+                <h3>Real-Time Live Feed</h3>
+            </div>
+            <div class="activity-drawer-actions">
+                <button class="btn btn-xs btn-outline" onclick="simulateLiveEvent()" title="Simulate a real-time event broadcast">
+                    <i data-lucide="zap" style="width:12px; height:12px;"></i> Simulate
+                </button>
+                <button class="btn btn-xs btn-ghost" onclick="toggleActivityDrawer()">✕</button>
+            </div>
+        </div>
+        <div class="activity-drawer-sub">
+            <span>WebSocket Live Broadcast Stream</span>
+            <button class="btn-text" onclick="clearActivityFeed()">Clear</button>
+        </div>
+        <div class="activity-feed-list" id="activity-feed-list">
+            <div class="activity-empty">
+                <i data-lucide="radio"></i>
+                <p>Listening for real-time events...</p>
+                <span class="text-dim">Mentor approvals, GitHub imports, and score recalculations update here live.</span>
+            </div>
+        </div>
+    </aside>
+    <div class="drawer-backdrop" id="drawer-backdrop" onclick="toggleActivityDrawer()"></div>
+
+    <!-- ═══════════════════════ Landing View ═══════════════════════ -->
+    <main id="view-landing" class="view active">
+        <section class="hero">
+            <div class="hero-bg-effects">
+                <div class="hero-glow glow-1"></div>
+                <div class="hero-glow glow-2"></div>
+                <div class="hero-glow glow-3"></div>
+            </div>
+            <div class="hero-content">
+                <div class="hero-badge">⚡ Real-Time Career Proof Engine</div>
+                <h1 class="hero-title">
+                    Show What You Can<br>
+                    <span class="gradient-text">Actually Do</span>
+                </h1>
+                <p class="hero-subtitle">
+                    Import public GitHub projects with live progress streaming. Compute 5-dimensional evidence scores. 
+                    Let recruiters see verified code evidence in real time.
+                </p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary btn-lg" onclick="showView('students')">
+                        <i data-lucide="arrow-right"></i> Explore Profiles
+                    </button>
+                    <button class="btn btn-outline btn-lg" onclick="openLiveScanModal()">
+                        <i data-lucide="zap"></i> Live Repo Scanner
+                    </button>
+                    <button class="btn btn-outline btn-lg" onclick="showView('recruiter')">
+                        <i data-lucide="search"></i> Recruiter View
+                    </button>
+                </div>
+                <div class="hero-stats">
+                    <div class="hero-stat">
+                        <span class="hero-stat-value" id="stat-students">0</span>
+                        <span class="hero-stat-label">Students</span>
+                    </div>
+                    <div class="hero-stat">
+                        <span class="hero-stat-value" id="stat-projects">0</span>
+                        <span class="hero-stat-label">Projects</span>
+                    </div>
+                    <div class="hero-stat">
+                        <span class="hero-stat-value" id="stat-skills">0</span>
+                        <span class="hero-stat-label">Skills Tracked</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="features-section">
+            <div class="container">
+                <h2 class="section-title">How SkillProof Works</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon" style="--accent: #6366f1">
+                            <i data-lucide="github"></i>
+                        </div>
+                        <h3>Real-Time GitHub Ingestion</h3>
+                        <p>Stream commit histories, multi-language ratios, and ASTs live. Watch progress step-by-step.</p>
+                        <span class="feature-tag auto">Live Stream</span>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon" style="--accent: #8b5cf6">
+                            <i data-lucide="bar-chart-3"></i>
+                        </div>
+                        <h3>Evidence Scoring</h3>
+                        <p>Transparent 0–100 score across Commit Consistency, Complexity, Documentation, and Authenticity.</p>
+                        <span class="feature-tag auto">Automated</span>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon" style="--accent: #a855f7">
+                            <i data-lucide="sparkles"></i>
+                        </div>
+                        <h3>AI Skill Extraction</h3>
+                        <p>Detect frameworks and competencies from real code. Labeled "AI-suggested" until mentor verified.</p>
+                        <span class="feature-tag ai">AI-Suggested</span>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon" style="--accent: #06b6d4">
+                            <i data-lucide="check-circle"></i>
+                        </div>
+                        <h3>Live Mentor Verification</h3>
+                        <p>Approvals broadcast across all recruiter and candidate screens in real-time via WebSockets.</p>
+                        <span class="feature-tag human">Human Approval</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ═══════════════════════ Students List View ═══════════════════════ -->
+    <main id="view-students" class="view">
+        <div class="container">
+            <div class="view-header">
+                <h1><i data-lucide="users"></i> Student Profiles</h1>
+                <div class="header-action-group">
+                    <button class="btn btn-outline" onclick="openLiveScanModal()">
+                        <i data-lucide="zap"></i> Live Repo Scanner
+                    </button>
+                    <button class="btn btn-primary" onclick="showImportModal()">
+                        <i data-lucide="plus"></i> Import from GitHub
+                    </button>
+                </div>
+            </div>
+
+            <!-- Instant Real-Time Search Toolbar -->
+            <div class="students-toolbar">
+                <div class="search-box">
+                    <i data-lucide="search"></i>
+                    <input type="text" id="student-search-input" placeholder="Real-time filter by name, skill, or GitHub username..." oninput="filterStudentsRealtime(this.value)">
+                    <button class="search-clear-btn" id="search-clear-btn" onclick="clearStudentSearch()">✕</button>
+                </div>
+                <div class="toolbar-stats" id="student-match-count">
+                    Showing students
+                </div>
+            </div>
+
+            <div class="students-grid" id="students-grid">
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Loading students...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ═══════════════════════ Student Profile View ═══════════════════════ -->
+    <main id="view-profile" class="view">
+        <div class="container">
+            <button class="btn btn-ghost back-btn" onclick="showView('students')">
+                <i data-lucide="arrow-left"></i> Back to Students
+            </button>
+            <div id="profile-content">
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Loading profile...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ═══════════════════════ Recruiter View ═══════════════════════ -->
+    <main id="view-recruiter" class="view">
+        <div class="container">
+            <div class="view-header">
+                <h1><i data-lucide="search"></i> Recruiter Search</h1>
+            </div>
+            <div class="recruiter-filters">
+                <div class="filter-group">
+                    <label for="skill-filter">Filter by Skill</label>
+                    <select id="skill-filter" onchange="recruiterSearch()">
+                        <option value="">All Skills</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="score-filter">Min Evidence Score</label>
+                    <input type="range" id="score-filter" min="0" max="100" value="0" 
+                           oninput="document.getElementById('score-value').textContent = this.value; recruiterSearch()">
+                    <span id="score-value" class="filter-value">0</span>
+                </div>
+            </div>
+            <div class="recruiter-results" id="recruiter-results">
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Searching...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ═══════════════════════ Mentor View ═══════════════════════ -->
+    <main id="view-mentor" class="view">
+        <div class="container">
+            <div class="view-header">
+                <h1><i data-lucide="message-square"></i> Mentor Feedback</h1>
+            </div>
+            <div class="mentor-content">
+                <div class="mentor-select">
+                    <label for="mentor-student-select">Select a Student</label>
+                    <select id="mentor-student-select" onchange="loadStudentProjects(this.value)">
+                        <option value="">Choose a student...</option>
+                    </select>
+                </div>
+                <div id="mentor-projects" class="mentor-projects" style="display:none;">
+                    <h3>Select a Project to Review</h3>
+                    <div id="mentor-project-list"></div>
+                </div>
+                <div id="feedback-form-container" style="display:none;">
+                    <form id="feedback-form" class="feedback-form" onsubmit="submitFeedback(event)">
+                        <h3 id="feedback-project-title">Feedback for: <span></span></h3>
+                        <input type="hidden" id="fb-project-id">
+                        
+                        <div class="form-group">
+                            <label for="fb-mentor-name">Your Name *</label>
+                            <input type="text" id="fb-mentor-name" required placeholder="Dr. Jane Smith">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="fb-mentor-email">Your Email</label>
+                            <input type="email" id="fb-mentor-email" placeholder="jane@university.edu">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Rating *</label>
+                            <div class="star-rating" id="star-rating">
+                                <button type="button" class="star" data-value="1" onclick="setRating(1)" aria-label="1 star">★</button>
+                                <button type="button" class="star" data-value="2" onclick="setRating(2)" aria-label="2 stars">★</button>
+                                <button type="button" class="star" data-value="3" onclick="setRating(3)" aria-label="3 stars">★</button>
+                                <button type="button" class="star" data-value="4" onclick="setRating(4)" aria-label="4 stars">★</button>
+                                <button type="button" class="star" data-value="5" onclick="setRating(5)" aria-label="5 stars">★</button>
+                            </div>
+                            <input type="hidden" id="fb-rating" value="0">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="fb-strengths">Strengths</label>
+                            <textarea id="fb-strengths" rows="3" placeholder="What does this project do well?"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="fb-improvements">Areas for Improvement</label>
+                            <textarea id="fb-improvements" rows="3" placeholder="What could be better?"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="fb-comments">Additional Comments</label>
+                            <textarea id="fb-comments" rows="2" placeholder="Any other thoughts?"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Verify Skills (approve AI-suggested skills)</label>
+                            <div id="fb-skills-list" class="skills-verify-list"></div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-lg" style="width:100%">
+                            <i data-lucide="send"></i> Submit Feedback
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ═══════════════════════ Real-Time Repo Scanner Modal ═══════════════════════ -->
+    <div class="modal-overlay" id="live-scan-modal" style="display:none;">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2><i data-lucide="zap" style="color:var(--accent-amber);"></i> Real-Time Repository Scanner</h2>
+                <button class="btn btn-ghost" onclick="closeLiveScanModal()" aria-label="Close">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-intro">
+                    Audit any public GitHub repository instantly. Our live engine evaluates commit timelines, code complexity, anti-gaming signals, and calculates an instant 0–100 Evidence Score.
+                </p>
+                <div class="scan-input-group">
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                        <label for="live-scan-url">GitHub Repository URL *</label>
+                        <input type="url" id="live-scan-url" placeholder="https://github.com/fastapi/fastapi" required>
+                    </div>
+                    <button class="btn btn-primary" id="live-scan-btn" onclick="runLiveRepoScan()">
+                        <i data-lucide="play"></i> Run Live Audit
+                    </button>
+                </div>
+                <div class="scan-quick-links">
+                    <span>Try live sample:</span>
+                    <a href="#" onclick="fillScanUrl('https://github.com/fastapi/fastapi'); return false;">fastapi/fastapi</a> •
+                    <a href="#" onclick="fillScanUrl('https://github.com/pallets/flask'); return false;">pallets/flask</a> •
+                    <a href="#" onclick="fillScanUrl('https://github.com/tiangolo/typer'); return false;">tiangolo/typer</a>
+                </div>
+                <div id="live-scan-results" class="scan-results-container" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════ Import Modal ═══════════════════════ -->
+    <div class="modal-overlay" id="import-modal" style="display:none;">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2><i data-lucide="github"></i> Real-Time GitHub Importer</h2>
+                <button class="btn btn-ghost" onclick="hideImportModal()" aria-label="Close">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="import-student">Target Student Profile</label>
+                    <select id="import-student">
+                        <option value="">Select existing student...</option>
+                    </select>
+                </div>
+                <p class="divider-text">— or create new student —</p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="new-student-name">New Student Name</label>
+                        <input type="text" id="new-student-name" placeholder="Jane Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-student-email">Email</label>
+                        <input type="email" id="new-student-email" placeholder="jane@university.edu">
+                    </div>
+                </div>
+                <hr style="border-color: var(--border); margin: 1.25rem 0;">
+                <div class="form-group">
+                    <label for="import-username">GitHub Username *</label>
+                    <input type="text" id="import-username" placeholder="e.g. octocat, torvalds" required>
+                </div>
+
+                <!-- Real-Time Streaming Progress Section -->
+                <div id="import-progress-container" class="import-progress-container" style="display:none;">
+                    <div class="progress-header">
+                        <span id="progress-status-label">Starting live import...</span>
+                        <span id="progress-percent-label">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <div class="live-stream-terminal" id="live-stream-terminal"></div>
+                </div>
+
+                <div id="import-status" class="import-status" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="hideImportModal()" id="import-cancel-btn">Cancel</button>
+                <button class="btn btn-primary" onclick="startImport()" id="import-btn">
+                    <i data-lucide="play"></i> Stream Import
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════ Toast Notifications ═══════════════════════ -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
