@@ -3,7 +3,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".."))
+candidates = [
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..")),
+    os.path.abspath(os.getcwd()),
+]
+PROJECT_ROOT = os.getcwd()
+for c in candidates:
+    if os.path.exists(os.path.join(c, "frontend")) or os.path.exists(os.path.join(c, "backend")):
+        PROJECT_ROOT = c
+        break
+
 DEFAULT_DB_FILE = os.path.join(PROJECT_ROOT, "skillproof.db").replace("\\", "/")
 
 DATABASE_URL = os.getenv("DATABASE_URL")

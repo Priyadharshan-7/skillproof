@@ -70,8 +70,21 @@ app.include_router(github_import.router)
 app.include_router(mentors.router)
 app.include_router(recruiters.router)
 
-# Serve frontend static assets
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "frontend")
+# Multi-candidate robust frontend static directory detection
+frontend_candidates = [
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend")),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend")),
+    os.path.abspath(os.path.join(os.getcwd(), "frontend")),
+    os.path.abspath(os.path.join(os.getcwd(), "backend", "..", "frontend")),
+]
+FRONTEND_DIR = None
+for c in frontend_candidates:
+    if os.path.exists(os.path.join(c, "index.html")):
+        FRONTEND_DIR = c
+        break
+if not FRONTEND_DIR:
+    FRONTEND_DIR = frontend_candidates[0]
+
 if os.path.exists(FRONTEND_DIR):
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
