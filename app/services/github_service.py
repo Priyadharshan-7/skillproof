@@ -25,19 +25,34 @@ def _headers() -> dict:
     return h
 
 
+class GitHubRateLimitException(Exception):
+    """Raised when GitHub API quota/rate limit is reached."""
+    def __init__(self, reset_time: str = "", message: str = ""):
+        self.reset_time = reset_time
+        super().__init__(message or f"GitHub API rate limit exceeded. Resets at {reset_time}.")
+
+
 async def _get(url: str, params: dict | None = None) -> dict | list | None:
     """Make a GET request to GitHub API with error handling."""
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         try:
             resp = await client.get(url, headers=_headers(), params=params)
             if resp.status_code == 403:
-                remaining = resp.headers.get("X-RateLimit-Remaining", "?")
-                logger.warning(f"GitHub rate limited. Remaining: {remaining}")
-                return None
+                reset_ts = resp.headers.get("X-RateLimit-Reset", 0)
+                reset_dt = ""
+                if reset_ts:
+                    try:
+                        reset_dt = datetime.fromtimestamp(int(reset_ts)).strftime("%H:%M:%S UTC")
+                    except Exception:
+                        pass
+                logger.warning(f"GitHub rate limited. Resets at: {reset_dt}")
+                raise GitHubRateLimitException(reset_time=reset_dt)
             if resp.status_code == 404:
                 return None
             resp.raise_for_status()
             return resp.json()
+        except GitHubRateLimitException:
+            raise
         except httpx.HTTPStatusError as e:
             logger.error(f"GitHub API error: {e}")
             return None
@@ -125,7 +140,7 @@ async def fetch_repo_languages(owner: str, repo: str) -> dict:
     return data if isinstance(data, dict) else {}
 
 
-async def fetch_repo_commits(owner: str, repo: str, max_pages: int = 5) -> list[dict]:
+async def fetch_repo_commits(owner: str, repo: str, max_pages: int = 1) -> list[dict]:
     """Fetch recent commits for a repo (up to max_pages * 100)."""
     repo = _clean_repo_name(repo)
     commits = []

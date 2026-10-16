@@ -1610,11 +1610,20 @@ async function runLiveRepoScan() {
     fetchRateLimitStatus();
   } catch (err) {
     if (resultsDiv) {
+      const isRateLimit = err.message && (err.message.includes("rate limit") || err.message.includes("quota"));
       resultsDiv.innerHTML = `
-        <div class="loading-state">
-          <p style="color:var(--accent-rose);">${escapeHtml(err.message)}</p>
+        <div style="padding: 1.5rem; text-align: center; border-radius: 8px; border: 1px solid rgba(244, 63, 94, 0.3); background: rgba(244, 63, 94, 0.08);">
+          <i data-lucide="${isRateLimit ? 'gauge' : 'alert-circle'}" style="width:28px; height:28px; color:var(--accent-rose); margin-bottom:0.5rem;"></i>
+          <p style="color:var(--accent-rose); font-weight:600; margin-bottom:0.5rem;">${escapeHtml(err.message)}</p>
+          ${isRateLimit ? `
+            <div style="font-size:0.85rem; color:var(--text-muted); max-width:480px; margin:0 auto; line-height:1.5;">
+              GitHub limits anonymous requests to 60/hr. To unlock <strong>5,000 requests/hr</strong>, add a free personal token in your Render Environment or local <code>.env</code>:
+              <br><code style="background:var(--bg-main); padding:3px 8px; border-radius:4px; display:inline-block; margin-top:6px; color:var(--accent-primary);">GITHUB_TOKEN=ghp_your_token</code>
+            </div>
+          ` : ''}
         </div>
       `;
+      safeCreateIcons();
     }
     showToast(err.message, "error");
   } finally {

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Student, Project, Skill
 from app.schemas import GitHubImportRequest, GitHubRepoImportRequest
-from app.services.github_service import import_full_repo, fetch_user_repos, fetch_rate_limit
+from app.services.github_service import import_full_repo, fetch_user_repos, fetch_rate_limit, GitHubRateLimitException
 from app.services.scoring import compute_project_score, compute_student_score
 from app.services.ai_summary import generate_ai_summary
 from app.services.websocket_manager import manager
@@ -79,11 +79,18 @@ async def live_scan_repo(data: GitHubRepoImportRequest):
         )
 
     owner, repo_name = parsed
-    repo_data = await import_full_repo(owner, repo_name)
+    try:
+        repo_data = await import_full_repo(owner, repo_name)
+    except GitHubRateLimitException as e:
+        raise HTTPException(
+            status_code=429,
+            detail=f"GitHub API rate limit exceeded (0/60 requests remaining). Resets at {e.reset_time}. To enable 5,000 requests/hr, add a free GITHUB_TOKEN in your environment settings.",
+        )
+
     if not repo_data:
         raise HTTPException(
             status_code=404,
-            detail=f"Could not fetch '{owner}/{repo_name}'. Check that it exists and is public.",
+            detail=f"Repository '{owner}/{repo_name}' not found. Please verify the URL or ensure the repository is public.",
         )
 
     score_result = compute_project_score(repo_data)
@@ -128,9 +135,10 @@ async def stream_github_import(
     async def event_generator():
         yield f"data: {json.dumps({'type': 'init', 'message': f'Connecting to GitHub for @{uname}...', 'percent': 5})}\n\n"
 
-        repos = await fetch_user_repos(uname)
-        if repos is None:
-            yield f"data: {json.dumps({'type': 'error', 'message': 'GitHub API error or rate limit reached. Consider adding a GITHUB_TOKEN.', 'percent': 0})}\n\n"
+        try:
+            repos = await fetch_user_repos(uname)
+        except GitHubRateLimitException as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': f'GitHub API rate limit exceeded. Resets at {e.reset_time}. Please add a GITHUB_TOKEN to enable 5,000 req/hr.', 'percent': 0})}\n\n"
             return
         if not repos:
             yield f"data: {json.dumps({'type': 'error', 'message': f'No public repositories found for @{uname}', 'percent': 0})}\n\n"
@@ -412,9 +420,16 @@ async def import_single_repo(student_id: int, data: GitHubRepoImportRequest, db:
     if existing:
         raise HTTPException(status_code=400, detail="This repo is already imported")
 
-    repo_data = await import_full_repo(owner, repo_name)
+    try:
+        repo_data = await import_full_repo(owner, repo_name)
+    except GitHubRateLimitException as e:
+        raise HTTPException(
+            status_code=429,
+            detail=f"GitHub API rate limit exceeded (0/60 requests remaining). Resets at {e.reset_time}. To enable 5,000 requests/hr, add a free GITHUB_TOKEN in your environment settings.",
+        )
+
     if not repo_data:
-        raise HTTPException(status_code=404, detail=f"Could not fetch repo '{owner}/{repo_name}'. Check that it exists and is public.")
+        raise HTTPException(status_code=404, detail=f"Repository '{owner}/{repo_name}' not found. Please verify the URL or ensure the repository is public.")
 
     score_result = compute_project_score(repo_data)
     ai_summary, ai_skills = await generate_ai_summary(repo_data)
